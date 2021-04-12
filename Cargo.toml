@@ -13,3 +13,7 @@ directories = "3.0.1"
 exitfailure = "0.5.1"
 ron = "0.6.4"
 serde = "1.0.125"
+
+[dependencies.rustbreak]
+features = ["ron_enc"]
+version = "2"
