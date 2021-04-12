@@ -2,7 +2,7 @@
 # only `name` and `description` below.
 
 {
-  description = "My awesome Rust project";
+  description = "TODO";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -21,7 +21,7 @@
   outputs = { self, nixpkgs, utils, rust-overlay, crate2nix, ... }:
     let
       # If you change the name here, you must also do it in Cargo.toml
-      name = "rust-nix-template";
+      name = "x";
     in
     utils.lib.eachDefaultSystem
       (system:
