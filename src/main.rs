@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use directories::ProjectDirs;
 use exitfailure::ExitFailure;
 use rustbreak::{deser::Yaml, PathDatabase};
@@ -27,20 +28,42 @@ impl Default for Doc {
     }
 }
 
-type V1Data = HashMap<u32, Entity>;
+type EntityId = String;
+
+// Migration trick for field additions:
+// When adding a new field, making it an `Option`, then load and write back the
+// data. Finally remove the Option, and once again load back and write the data.
+type V1Data = HashMap<EntityId, Entity>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Entity {
-    id: String,
+    id: EntityId,
+    created: DateTime<Utc>,
+    content: String,
+    // List of references to other entities
+    refs: Vec<Ref>,
+    // props: Option<HashMap<String, String>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+enum Ref {
+    // An ordinary relationship with no explicit hierarchy
+    RefSee(EntityId),
+    // A strong parent-child relationship
+    RefChild(EntityId),
 }
 
 fn edit_data<F>(db: &mut Doc, f: F)
 where
     F: Fn(&mut V1Data) -> (),
 {
-    let val: &mut V1Data = &mut serde_yaml::from_value(db.data.clone()).expect("err");
+    let val: &mut V1Data = &mut get_data(db);
     f(val);
     db.data = serde_yaml::to_value(val).expect("err");
+}
+
+fn get_data(db: &Doc) -> V1Data {
+    serde_yaml::from_value(db.data.clone()).expect("err")
 }
 
 fn main() -> Result<(), ExitFailure> {
@@ -51,15 +74,20 @@ fn main() -> Result<(), ExitFailure> {
     let db = PathDatabase::<Doc, Yaml>::load_from_path_or_default(db_file)?;
 
     db.read(|db| {
-        println!("Init: {:?}", db.data);
+        let val = get_data(db);
+        println!("Init: {:?}", val);
     })?;
 
     db.write(|db| {
         edit_data(db, |val: &mut V1Data| {
             val.insert(
-                0,
+                "first".to_string(),
                 Entity {
                     id: "test".to_string(),
+                    created: Utc::now(),
+                    content: "Hello world".to_string(),
+                    refs: vec![],
+                    // props: None,
                 },
             );
         });
@@ -67,7 +95,8 @@ fn main() -> Result<(), ExitFailure> {
     db.save()?;
 
     db.read(|db| {
-        println!("Writ: {:?}", db.data);
+        let val = get_data(db);
+        println!("Writ: {:?}", val);
     })?;
 
     Ok(())
